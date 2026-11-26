@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="株式リサーチ">
+<meta name="theme-color" content="#0d1117">
+<title>株式リサーチ</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #1c2330;
+  --border: #2a3140;
+  --accent: #4f9eff;
+  --accent-dim: #162033;
+  --accent-glow: rgba(79,158,255,0.12);
+  --text: #e6edf3;
+  --text-muted: #7d8590;
+  --text-dim: #3d444d;
+  --green: #3fb950;
+  --red: #f85149;
+  --radius: 8px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Hiragino Kaku Gothic ProN','Yu Gothic UI','Noto Sans JP',sans-serif;font-size:14px;line-height:1.6;overscroll-behavior:none}
+
+/* ── Layout ── */
+#app{display:flex;flex-direction:column;height:100dvh;padding-top:var(--safe-top)}
+#topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;padding-top:max(12px, var(--safe-top))}
+#body{display:flex;flex:1;overflow:hidden}
+#sidebar{width:230px;min-width:230px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#content{flex:1;overflow-y:auto;padding:20px 20px calc(20px + var(--safe-bottom));display:flex;flex-direction:column;gap:14px}
+
+/* ── Topbar ── */
+#menu-toggle{display:none;background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;line-height:0}
+#topbar-title{font-size:14px;font-weight:600;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#key-btn{background:none;border:1px solid var(--border);border-radius:20px;color:var(--text-muted);font-size:12px;font-family:inherit;padding:5px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:border-color .15s,color .15s}
+#key-btn:hover{border-color:var(--accent);color:var(--accent)}
+#key-btn.set{border-color:var(--green);color:var(--green)}
+
+/* ── Sidebar ── */
+#sidebar-inner{padding:10px 8px;overflow-y:auto;flex:1}
+#sidebar-inner ul{list-style:none}
+#sidebar-inner li{margin-bottom:2px}
+#sidebar-inner button{width:100%;text-align:left;background:none;border:none;cursor:pointer;padding:9px 10px;border-radius:var(--radius);color:var(--text-muted);font-size:13px;font-family:inherit;display:flex;align-items:flex-start;gap:8px;transition:background .15s,color .15s;line-height:1.4}
+#sidebar-inner button:hover{background:var(--surface2);color:var(--text)}
+#sidebar-inner button.active{background:var(--accent-dim);color:var(--accent)}
+.num{font-size:11px;font-weight:700;min-width:19px;height:19px;background:var(--text-dim);color:var(--surface);border-radius:3px;display:flex;align-items:center;justify-content:center;margin-top:1px;flex-shrink:0;transition:background .15s}
+button.active .num{background:var(--accent);color:#fff}
+
+/* ── Market selector ── */
+#market-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#market-label{font-size:12px;color:var(--text-muted);flex-shrink:0}
+.mkt-btns{display:flex;gap:4px;flex-wrap:wrap}
+.mkt-btn{padding:4px 11px;border-radius:16px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:12px;font-family:inherit;cursor:pointer;transition:all .15s;font-weight:500}
+.mkt-btn:hover{border-color:var(--accent);color:var(--accent)}
+.mkt-btn.sel{background:var(--accent);border-color:var(--accent);color:#fff}
+#other-wrap{display:none;align-items:center;gap:6px}
+#other-wrap.vis{display:flex}
+#other-input{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:12px;font-family:inherit;padding:5px 10px;width:130px;outline:none;transition:border-color .15s}
+#other-input:focus{border-color:var(--accent)}
+#other-input::placeholder{color:var(--text-muted)}
+
+/* ── Section desc ── */
+.desc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;color:var(--text-muted);font-size:13px;line-height:1.7}
+
+/* ── Params ── */
+#params-area{display:flex;flex-direction:column;gap:10px}
+.param-row{display:flex;flex-direction:column;gap:4px}
+.param-label{font-size:12px;color:var(--text-muted)}
+.param-input{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:14px;font-family:inherit;padding:10px 12px;outline:none;transition:border-color .15s;width:100%}
+.param-input:focus{border-color:var(--accent)}
+.param-input::placeholder{color:var(--text-muted)}
+
+/* ── Submit ── */
+#submit-btn{background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:12px 24px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .15s;align-self:flex-start}
+#submit-btn:hover{opacity:.85}
+#submit-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Response ── */
+#response-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;min-height:120px;flex:1}
+#response-wrap.empty{display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px}
+#response-content{color:var(--text);font-size:13.5px;line-height:1.9;white-space:pre-wrap;word-break:break-word}
+#response-content h2,#response-content h3{color:var(--accent);margin:1.2em 0 .4em;font-size:14px;font-weight:600}
+#response-content strong{font-weight:600}
+
+.dots{display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:13px}
+.dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 1.2s infinite}
+.dot:nth-child(2){animation-delay:.2s}
+.dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
+.disclaimer{font-size:11px;color:var(--text-muted);padding-top:8px;border-top:1px solid var(--border);line-height:1.5}
+
+/* ── API key modal ── */
+#modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;padding:20px}
+#modal-bg.open{display:flex}
+#modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:420px}
+#modal h2{font-size:16px;font-weight:700;margin-bottom:8px}
+#modal p{font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.7}
+#modal a{color:var(--accent)}
+#api-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:13px;font-family:inherit;padding:10px 12px;outline:none;margin-bottom:12px;transition:border-color .15s}
+#api-input:focus{border-color:var(--accent)}
+#api-input::placeholder{color:var(--text-muted)}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end}
+.modal-btn{padding:9px 18px;border-radius:var(--radius);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;border:none;transition:opacity .15s}
+.modal-btn:hover{opacity:.85}
+.modal-cancel{background:var(--surface2);color:var(--text-muted)}
+.modal-save{background:var(--accent);color:#fff}
+.modal-del{background:none;border:1px solid var(--red) !important;color:var(--red);font-size:12px;padding:6px 12px;margin-right:auto}
+
+/* ── Mobile ── */
+@media(max-width:640px){
+  #sidebar{position:fixed;top:0;left:0;bottom:0;z-index:50;transform:translateX(-100%);transition:transform .22s ease;width:260px;padding-top:var(--safe-top)}
+  #sidebar.open{transform:translateX(0)}
+  #sidebar-backdrop{display:none;position:fixed;inset:0;z-index:49;background:rgba(0,0,0,.5)}
+  #sidebar-backdrop.open{display:block}
+  #menu-toggle{display:block}
+  #topbar{padding-left:12px}
+}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <button id="menu-toggle" onclick="toggleSidebar()" aria-label="メニュー">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+    <span id="topbar-title">最適な銘柄を見つける</span>
+    <button id="key-btn" onclick="openModal()">APIキー設定</button>
+  </div>
+
+  <div id="body">
+    <div id="sidebar-backdrop" onclick="toggleSidebar()"></div>
+    <nav id="sidebar">
+      <div id="sidebar-inner">
+        <ul id="menu"></ul>
+      </div>
+    </nav>
+
+    <div id="main">
+      <div id="content">
+        <div id="market-row">
+          <span id="market-label">市場：</span>
+          <div class="mkt-btns">
+            <button class="mkt-btn sel" onclick="selMarket('米国',this)">🇺🇸 米国</button>
+            <button class="mkt-btn" onclick="selMarket('日本',this)">🇯🇵 日本</button>
+            <button class="mkt-btn" onclick="selMarket('米国・日本',this)">🌐 両方</button>
+            <button class="mkt-btn" onclick="selMarket('その他',this)">✏️ その他</button>
+          </div>
+          <div id="other-wrap">
+            <input id="other-input" type="text" placeholder="例：香港、欧州">
+          </div>
+        </div>
+
+        <div class="desc" id="sec-desc"></div>
+        <div id="params-area"></div>
+        <button id="submit-btn" onclick="runQuery()">分析を実行</button>
+        <div id="response-wrap" class="empty"><span>実行ボタンを押すと分析結果が表示されます</span></div>
+        <div class="disclaimer">※ AI生成情報であり投資助言ではありません。投資判断はご自身の責任で行ってください。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- API Key Modal -->
+<div id="modal-bg">
+  <div id="modal">
+    <h2>🔑 Anthropic APIキー</h2>
+    <p>
+      <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> でAPIキーを取得してください。<br>
+      キーはこの端末のブラウザ内にのみ保存され、外部には送信されません。
+    </p>
+    <input id="api-input" type="password" placeholder="sk-ant-..." />
+    <div class="modal-btns">
+      <button class="modal-btn modal-del" onclick="deleteKey()">削除</button>
+      <button class="modal-btn modal-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="modal-btn modal-save" onclick="saveKey()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SECTIONS = [
+  {
+    title:"最適な銘柄を見つける",
+    desc:"財務の健全性・成長性・競争優位性・バリュエーション・業界動向・投資リスクに基づき、有望な銘柄を特定します。",
+    useMarket:true, params:[],
+    prompt:(v,m)=>`シニア株式リサーチアナリストとして、財務の健全性、成長性、競争優位性、バリュエーション、業界動向、投資リスクに基づき、${m}市場で現在有望な銘柄を特定してください。最新の市場データと企業情報を参照し、具体的な銘柄名と選定理由を詳しく説明してください。回答は日本語で。`
+  },
+  {
+    title:"あらゆる銘柄を分析",
+    desc:"売上高成長・収益性・負債・キャッシュフロー・経営陣・競争優位性・バリュエーション・将来見通し・主要リスクを包括的に分析します。",
+    useMarket:false,
+    params:[{key:"ticker",label:"会社名 / ティッカーシンボル",ph:"例: トヨタ自動車、NVDA、7203.T"}],
+    prompt:(v,m)=>`${v.ticker||"（銘柄未指定）"}を包括的に分析してください。売上高の成長、収益性、負債、キャッシュフロー、経営陣、競争優位性、バリュエーション、将来の見通し、主要なリスクを詳細に検討してください。最新の財務データや市場情報を参照し、投資判断に役立つ分析を提供してください。回答は日本語で。`
+  },
+  {
+    title:"割安な銘柄を見つける",
+    desc:"本質的価値・利益成長率・フリーキャッシュフロー・財務健全性・バリュエーション指標を比較して割安銘柄を探します。",
+    useMarket:true, params:[],
+    prompt:(v,m)=>`${m}市場をスクリーニングし、割安である可能性のある企業を探してください。本質的価値、利益成長率、フリーキャッシュフロー、財務健全性、業界内での地位、バリュエーション指標（PER・PBR・EV/EBITDAなど）を比較してください。分析方法と前提条件も説明し、具体的な銘柄名と根拠を日本語で示してください。`
+  },
+  {
+    title:"財務諸表を分析する",
+    desc:"損益計算書・貸借対照表・キャッシュフロー計算書を精査し、財務上の強み・会計上の懸念点・収益性の傾向・債務リスクを特定します。",
+    useMarket:false,
+    params:[{key:"company",label:"会社名 / ティッカーシンボル",ph:"例: ソフトバンクグループ、AAPL"}],
+    prompt:(v,m)=>`${v.company||"（企業未指定）"}の損益計算書、貸借対照表、キャッシュフロー計算書を精査してください。財務上の強み、会計上の懸念点、収益性の傾向、債務に関する懸念、持続可能な事業実績を示す指標を特定し、最新の財務データをもとに詳しく分析してください。回答は日本語で。`
+  },
+  {
+    title:"売買タイミングを見極める",
+    desc:"価格トレンド・サポート/レジスタンス・移動平均線・RSI・MACD・出来高・市場環境に基づき、エントリー/エグジットのシナリオを特定します。",
+    useMarket:false,
+    params:[{key:"ticker",label:"ティッカーシンボル / 銘柄名",ph:"例: TSLA、6758.T（ソニー）"}],
+    prompt:(v,m)=>`${v.ticker||"（銘柄未指定）"}について、価格トレンド、サポートライン、レジスタンスライン、移動平均線（SMA/EMA）、RSI、MACD、出来高、市場環境に基づいて分析してください。エントリーとエグジットの可能性のあるシナリオを、それぞれのシナリオが無効になる水準とともに特定してください。最新データを参照し日本語で回答してください。`
+  },
+  {
+    title:"将来性の高い銘柄を探す",
+    desc:"指定した業界・分野で成長の見込みがある企業を調査。売上成長・市場拡大・イノベーション・競争優位性・経営陣の質・リスクを評価します。",
+    useMarket:true,
+    params:[{key:"industry",label:"業界 / セクター",ph:"例: 半導体、再生可能エネルギー、AI"}],
+    prompt:(v,m)=>`${v.industry||"テクノロジー"}分野（${m}市場）で成長の見込みがある企業を調査してください。売上成長の加速、市場拡大、イノベーション、競争優位性、経営陣の質、成長を妨げる可能性のあるリスクを評価し、具体的な注目銘柄とその根拠を最新情報をもとに日本語で示してください。`
+  },
+  {
+    title:"プロ向けトレード戦略",
+    desc:"資金・リスク許容度・時間軸・経験に基づくトレード戦略を設計。スクリーニング基準・エントリールール・損切り・ポジションサイズ・利益目標を提示します。",
+    useMarket:true,
+    params:[
+      {key:"capital",label:"運用資金（任意）",ph:"例: 100万円、50,000ドル"},
+      {key:"risk",label:"リスク許容度（任意）",ph:"例: 低・中・高、1トレード最大2%"},
+      {key:"horizon",label:"投資時間軸（任意）",ph:"例: デイトレード、スイング、長期"},
+      {key:"exp",label:"経験レベル（任意）",ph:"例: 初心者、3年、プロ"}
+    ],
+    prompt:(v,m)=>{
+      const info=[
+        v.capital?`運用資金: ${v.capital}`:null,
+        v.risk?`リスク許容度: ${v.risk}`:null,
+        v.horizon?`時間軸: ${v.horizon}`:null,
+        v.exp?`経験: ${v.exp}`:null
+      ].filter(Boolean).join("、")||"情報未入力（一般的な戦略を提示）";
+      return `${m}市場向けのプロレベルのトレード戦略を設計してください。条件: ${info}。スクリーニング基準、エントリールール、損切り水準、ポジションサイズ計算、利益目標、決済条件を具体的に明確にしてください。最新の市場環境も踏まえ日本語で回答してください。`;
+    }
+  }
+];
+
+let curSection=0, curMarket="米国", loading=false;
+
+// Build menu
+const menu=document.getElementById('menu');
+SECTIONS.forEach((s,i)=>{
+  const li=document.createElement('li');
+  const btn=document.createElement('button');
+  btn.innerHTML=`<span class="num">${i+1}</span><span>${s.title}</span>`;
+  btn.onclick=()=>selectSection(i);
+  if(i===0) btn.classList.add('active');
+  li.appendChild(btn); menu.appendChild(li);
+});
+
+function selectSection(i){
+  curSection=i;
+  document.querySelectorAll('#menu button').forEach((b,j)=>b.classList.toggle('active',j===i));
+  const s=SECTIONS[i];
+  document.getElementById('topbar-title').textContent=s.title;
+  document.getElementById('sec-desc').textContent=s.desc;
+  document.getElementById('market-row').style.display=s.useMarket?'flex':'none';
+  renderParams(s);
+  clearResp();
+  // close mobile sidebar
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-backdrop').classList.remove('open');
+}
+
+function renderParams(s){
+  const area=document.getElementById('params-area');
+  area.innerHTML='';
+  s.params.forEach(p=>{
+    const row=document.createElement('div'); row.className='param-row';
+    const lbl=document.createElement('div'); lbl.className='param-label'; lbl.textContent=p.label;
+    const inp=document.createElement('input'); inp.type='text'; inp.className='param-input';
+    inp.placeholder=p.ph; inp.dataset.key=p.key;
+    row.appendChild(lbl); row.appendChild(inp); area.appendChild(row);
+  });
+}
+
+function selMarket(m, btn){
+  curMarket=m;
+  document.querySelectorAll('.mkt-btn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  const wrap=document.getElementById('other-wrap');
+  m==='その他'?wrap.classList.add('vis'):wrap.classList.remove('vis');
+}
+
+function getMarket(){
+  if(curMarket==='その他'){
+    return document.getElementById('other-input').value.trim()||'その他';
+  }
+  return curMarket;
+}
+
+function getParams(){
+  const v={};
+  document.querySelectorAll('.param-input').forEach(i=>v[i.dataset.key]=i.value.trim());
+  return v;
+}
+
+function clearResp(){
+  const w=document.getElementById('response-wrap');
+  w.className='empty'; w.innerHTML='<span>実行ボタンを押すと分析結果が表示されます</span>';
+}
+
+function showLoading(){
+  const w=document.getElementById('response-wrap');
+  w.className=''; w.innerHTML='<div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span style="margin-left:8px;font-size:13px;color:var(--text-muted)">分析中…</span></div>';
+}
+
+function showResult(text){
+  const w=document.getElementById('response-wrap');
+  w.className='';
+  const d=document.createElement('div'); d.id='response-content'; d.textContent=text;
+  w.innerHTML=''; w.appendChild(d);
+}
+
+function showError(msg){
+  const w=document.getElementById('response-wrap');
+  w.className=''; w.innerHTML=`<div style="color:var(--red);font-size:13px;">⚠️ ${msg}</div>`;
+}
+
+async function runQuery(){
+  if(loading) return;
+  const key=localStorage.getItem('anthropic_api_key');
+  if(!key){openModal(); return;}
+  const s=SECTIONS[curSection];
+  const prompt=s.prompt(getParams(), getMarket());
+  loading=true;
+  document.getElementById('submit-btn').disabled=true;
+  showLoading();
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-6",
+        max_tokens:1500,
+        tools:[{type:"web_search_20250305",name:"web_search"}],
+        system:"あなたはプロフェッショナルな株式リサーチアナリストです。最新のウェブ情報を積極的に検索し、事実に基づいた正確な情報のみを提供してください。ハルシネーション（事実に反する情報）は絶対に避けてください。不明な点は「確認できていない」と明示してください。すべての回答は日本語で行ってください。",
+        messages:[{role:"user",content:prompt}]
+      })
+    });
+    if(!res.ok){
+      const err=await res.json().catch(()=>({}));
+      throw new Error(err.error?.message||`HTTP ${res.status}`);
+    }
+    const data=await res.json();
+    const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n\n').trim();
+    text?showResult(text):showError("回答が取得できませんでした。再度お試しください。");
+  }catch(e){
+    if(e.message.includes('401')||e.message.includes('invalid')){
+      showError("APIキーが無効です。設定から正しいキーを入力してください。");
+    } else {
+      showError("エラー: "+e.message);
+    }
+  }finally{
+    loading=false;
+    document.getElementById('submit-btn').disabled=false;
+  }
+}
+
+// Modal
+function openModal(){
+  const k=localStorage.getItem('anthropic_api_key')||'';
+  document.getElementById('api-input').value=k;
+  document.getElementById('modal-bg').classList.add('open');
+}
+function closeModal(){document.getElementById('modal-bg').classList.remove('open')}
+function saveKey(){
+  const v=document.getElementById('api-input').value.trim();
+  if(!v){alert('APIキーを入力してください'); return;}
+  localStorage.setItem('anthropic_api_key',v);
+  updateKeyBtn();
+  closeModal();
+}
+function deleteKey(){
+  if(!confirm('APIキーを削除しますか？')) return;
+  localStorage.removeItem('anthropic_api_key');
+  updateKeyBtn();
+  closeModal();
+}
+function updateKeyBtn(){
+  const btn=document.getElementById('key-btn');
+  const has=!!localStorage.getItem('anthropic_api_key');
+  btn.textContent=has?'🔑 設定済み':'APIキー設定';
+  btn.className=has?'set':'';
+  // reset classes properly
+  btn.style.cssText='';
+  if(has){btn.classList.add('set')}
+}
+
+// Mobile sidebar
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-backdrop').classList.toggle('open');
+}
+
+// Init
+selectSection(0);
+updateKeyBtn();
+// Auto open modal if no key
+if(!localStorage.getItem('anthropic_api_key')){
+  setTimeout(()=>openModal(), 400);
+}
+</script>
+</body>
+</html>
